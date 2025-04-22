@@ -54,27 +54,27 @@ loop
 	jsr delay
 	jsr delay
 
-	ldx $8000       ; load ACIA into x-register (receive data)
+	lda $8000       ; load ACIA into x-register (receive data)
 
-	stx $4000       ; store x-register to TIL display
+	sta $4000       ; store x-register to TIL display
 
 	jsr delay
 	jsr delay
 	jsr delay
 	jsr delay
 
-	ldx $8000        
+	lda $8000        
 
-	stx $4000
+	sta $4000
 
         jsr delay	; waste time
 	jsr delay
 	jsr delay
 	jsr delay
 
-	ldx #$BA
+	lda #$BA
 
-	stx $4000
+	sta $4000
 
 
 	jmp loop
