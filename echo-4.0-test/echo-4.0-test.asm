@@ -231,6 +231,17 @@ YLTOGN EQU $3C0                 ; Toggle for which light to turn from yellow to 
 
 						;    01 -> south light, 02 -> north light
 
+
+
+; Jorrel: 
+; Memory Locations for ACIA Interface
+; We put these in memory such that we can recover them when we go into subroutines
+
+ACIARXM EQU $3D0 ; Stores in memory the most recently recieved byte from arduino
+ACIATXM EQU $3D1 ; Value we want to send over acia
+
+
+
 ;
 
 ;
@@ -287,7 +298,7 @@ DISP	EQU $4000
 
 
 
-;INITIALIZATION
+; INITIALIZATION
 
 	ORG $E000
 
@@ -318,19 +329,63 @@ DISP	EQU $4000
 	LDA #$00 ; PUT 00 ON THE DISPLAY
 
 	STA DISP	
+
+
+	; Jorrel Added: 
+	; Initialize ACIARXD to EE for signaling
+	LDA #$EE
+	STA ACIARXD
+
 	
 ARENA   
-	LDA RDATA; Wait for RDATA to start the routine. Can be anything
-	STA DISP ; Display RDATA received
+	JSR ACIACLR
+	LDA ACIATXM
+	CMP #$CC
+	BNE ARENA ; restart loop if acia hasn't cleared yet
 
-	; If we receive 88 or 89, go to the ACIATX routine and then to ACIARX
+	; If we receive 88 or 89, go to the ACIATX routine and then to ACIARX	
+	LDA RDATA
+	STA ACIATXM
+
 	CMP #$88
 	BEQ ACIATX
-
+	
 	CMP #$89
 	BEQ ACIATX	
 
-	JMP ARENA; If it is still 00, wait for meaningful rdata
+	; Store Current value from arduino to display
+	LDA ACIATXD
+	STA DISP
+	JMP ARENA
+
+
+ACIACLR	
+	LDA ACIASR ; Load the status register
+	BIT #$10 ; Is the ACIA TX line clear?
+	BEQ ACIACLR; If it is not, then wait...
+
+	LDA #$CC ; Load Designated Arduino-Clearing Byte: 0xCC for clear
+	STA ACIA ; Send RDATA to the ACIA TX 
+	JSR DELAY ; Delay before we go back to checking the data
+
+ACIACLT
+	LDA #$CC ; Indicate that clearing is undergoing w/ display
+	STA DISP
+	JSR DELAY
+		
+	; Is the buffer full? If not, wait for it to be filled
+	LDA ACIASR 	; Load he status register  	
+	BIT #$08 	; Is buffer full?
+	BEQ ACIACLT	; If not, then wait...
+
+	LDA ACIA ; Read the buffer
+	STA ACIARXM ; Store result away in memory
+
+	; We store the number received on the display
+	STA DISP ; Display the code obtained
+	JSR DELAY
+
+	RTS
 
 ; We got RDATA, now send it to the arduino
 ACIATX	
@@ -338,7 +393,7 @@ ACIATX
 	BIT #$10 ; Is the ACIA TX line clear?
 	BEQ ACIATX; If it is not, then wait...
 
-	LDA RDATA ; Accumulator has been overwritten already; make sure we reload RDATA
+	LDA ACIATXM ; Load data we want to send over ACIA
 	STA ACIA ; Send RDATA to the ACIA TX 
 	JSR DELAY ; Delay before we go back to checking the data
 
@@ -355,14 +410,15 @@ ACIARX
 	BEQ ACIARX	; If not, then wait...
 
 	LDA ACIA ; Read the buffer
+	STA ACIARXM ; Store result away in memory
 
 	; We store the number received on the display
 	STA DISP ; Display the code obtained
 	JSR DELAY
 
 	; If the number gets too high, reset RDATA, ACIA line, and then go back to ARENA
-	CMP #$0A 
-	BEQ RESETRD
+	; CMP #$0A 
+	; BEQ RESETRD
 
 	; Reset RDATA, then wait for the user to put in RDATA
 	LDA #$00
