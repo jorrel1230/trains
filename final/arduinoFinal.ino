@@ -1,31 +1,70 @@
+// arduinoFinal.ino
+// Author: Jorrel Rajan
+
+// ------------------------------------------------------------
+// Arduino Program that acts an an 'API' for the ACIA to query.
+// Maintains internal states that can be requested at any time.
+// ------------------------------------------------------------
+
+
 #include <SoftwareSerial.h>
 #include <Arduino_APDS9960.h>
 
+// Initialize Hardware
+SoftwareSerial mySerial(2, 3); // RX = 2, TX = 3
 
-SoftwareSerial mySerial(2, 3);
+const int HALL1PIN = 9;
+const int HALL2PIN = 10;
+const int HALL3PIN = 11;
+const int HALL4PIN = 12;
+const int HALL5PIN = 13;
 
 // Response and Request Bytes for ACIA
 byte req;
 byte res;
 byte color;
 
+byte hall1;
+byte hall2;
+byte hall3;
+byte hall4;
+byte hall5;
+
+// Byte Constants for Communication Protocol 
 const byte whiteByte = 0xCA;
 const byte blackByte = 0xCB;
 
+const byte hallOn = 0x02;
+const byte hallOff = 0x01;
+
 void setup() {
+  // Initialize both Hardware and Software Serial.
+  // Keep Hardware Serial plugged in for debugging purposes.
   Serial.begin(9600);
   mySerial.begin(9600);
 
+  // Set Up Color Sensor with I2C.
   if (!APDS.begin()) {
     Serial.println("Error initializing APDS-9960 sensor.");
   } else {
     Serial.println("Color Sensor Initialized!");
   }
+
+  // Set up Hall Effect Sensors with Arduino Digital Pins.
+  pinMode(HALL1PIN, INPUT);
+  pinMode(HALL2PIN, INPUT);
+  pinMode(HALL3PIN, INPUT);
+  pinMode(HALL4PIN, INPUT);
+  pinMode(HALL5PIN, INPUT);
 }
 
 void loop() {
 
+  // Update Color Sensor State
   color = updateColor();
+
+  // Update States of all Hall Effects
+  updateHalls();
   
   // Read data from serial.read
   if(mySerial.available() > 0) {
@@ -42,14 +81,15 @@ void loop() {
   delay(10);
 }
 
+// ------------------------------------------------------------
+// Handler Functions
+// Manages ACIA Requests
+// ------------------------------------------------------------
+
 byte handleACIA(byte data) {
   byte returnData;
   
   switch (data) {
-    case 0x00: 
-      // Designated Clear Command
-      returnData = 0x01;
-      break;
     case 0x89:
       returnData = handleColorSensor();
       break;
@@ -80,25 +120,33 @@ byte handleColorSensor() {
 }
 
 byte handleHallEffect1() {
-  return 0x11;
+  return hall1;
 }
 
 byte handleHallEffect2() {
-  return 0x22;
+  return hall2;
 }
 
 byte handleHallEffect3() {
-  return 0x33;
+  return hall3;
 }
 
 byte handleHallEffect4() {
-  return 0x44;
+  return hall4;
 }
 
 byte handleHallEffect5() {
-  return 0x55;
+  return hall5;
 }
 
+
+// ------------------------------------------------------------
+// UPDATER FUNCTIONS: 
+// Main purpose of these functions is to updates the Arduino's 
+// INTERNAL STATE of a sensor 
+// ------------------------------------------------------------
+
+// Updates currently held color in arduino variable
 byte updateColor() {
   if (APDS.colorAvailable()) {
     int r, g, b;
@@ -115,3 +163,17 @@ byte updateColor() {
     }
   }
 }
+
+// Updates all hall sensors
+void updateHalls() {
+  hall1 = (digitalRead(HALL1PIN) == HIGH) ? hallOn : hallOff;
+  hall2 = (digitalRead(HALL2PIN) == HIGH) ? hallOn : hallOff;
+  hall3 = (digitalRead(HALL3PIN) == HIGH) ? hallOn : hallOff;
+  hall4 = (digitalRead(HALL4PIN) == HIGH) ? hallOn : hallOff;
+  hall5 = (digitalRead(HALL5PIN) == HIGH) ? hallOn : hallOff;
+}
+
+
+
+
+
