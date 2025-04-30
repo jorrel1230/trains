@@ -6,18 +6,27 @@
 // Maintains internal states that can be requested at any time.
 // ------------------------------------------------------------
 
-
+// Include all necessary libraries
 #include <SoftwareSerial.h>
 #include <Arduino_APDS9960.h>
+#include <Servo.h>
 
-// Initialize Hardware
+// Initialize Software Serial for ACIA communication
 SoftwareSerial mySerial(2, 3); // RX = 2, TX = 3
 
+//.Initialize Servos
+Servo pickupServo;
+Servo dropoffServo;
+
+// Pin Definitions
 const int HALL1PIN = 9;
 const int HALL2PIN = 10;
 const int HALL3PIN = 11;
 const int HALL4PIN = 12;
 const int HALL5PIN = 13;
+
+const int PICKUPSERVOPIN = 5;
+const int DROPOFFSERVOPIN = 6;
 
 // Response and Request Bytes for ACIA
 byte req;
@@ -56,6 +65,10 @@ void setup() {
   pinMode(HALL3PIN, INPUT);
   pinMode(HALL4PIN, INPUT);
   pinMode(HALL5PIN, INPUT);
+
+  // Set Up Servo Motos with Arduino Digital Pins
+  pickupServo.attach(PICKUPSERVOPIN); 
+  dropoffServo.attach(DROPOFFSERVOPIN);
 }
 
 void loop() {
@@ -90,9 +103,6 @@ byte handleACIA(byte data) {
   byte returnData;
   
   switch (data) {
-    case 0x89:
-      returnData = handleColorSensor();
-      break;
     case 0x81:
       returnData = handleHallEffect1();
       break;
@@ -107,6 +117,18 @@ byte handleACIA(byte data) {
       break;
     case 0x85:
       returnData = handleHallEffect5();
+      break;
+    case 0x86:
+      returnData = handlePickupServo();
+      break;
+    case 0x87:
+      returnData = handlePickupServo();
+      break;
+    case 0x88:
+      returnData = handlePickupServo();
+      break;
+    case 0x89:
+      returnData = handleColorSensor();
       break;
     default:
       returnData = 0x00;
@@ -139,6 +161,28 @@ byte handleHallEffect5() {
   return hall5;
 }
 
+// State: 
+//  0 - Marble Pickup
+//  1 - Marble Sense
+//  2 - Marble Drop
+
+// TODO 
+byte handlePickupServo(int state) {
+   switch (state) {
+    case 0:
+      return 0x01;
+      break;
+    case 1:
+      return 0x01;
+      break;
+    case 2:
+      return 0x01;
+      break;
+    default:
+      return 0x00;
+      break;
+  }
+}
 
 // ------------------------------------------------------------
 // UPDATER FUNCTIONS: 
