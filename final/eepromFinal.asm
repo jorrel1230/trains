@@ -1,326 +1,108 @@
-
 ;       Lecky Routine    V3.1      typed by Tad Coburn
-
 ;       modified by Dan Lockwood (V2.0 -> V3.0)
-
 ;       MODIFIED BY MGL (V3.0 -> V3.1)
-
 ;		MODIFIED BY PYT (V3.1 -> V4.0)
-
 ;		Modified for use with the ADX-65
-
 ;       The modifications made to update Lecky to verion 3.0 were:
-
 ;               1) Get rid of the ability to store a train on a side track under
-
 ;                  "caution" status where the light is yellow.
-
 ;               2) Change light status updating so when the mailbox is cleared the
-
 ;                  light goes from red to yellow instead of from red to green.
-
 ;               3) When the Dispatcher asks for the block computer to send the block
-
 ;                  status back, the least two significant bits of CONTRL are sent to
-
 ;                  inform the Dispatcher which light (north or south) will turn green.
-
 ;               4) The protocol for communication has been changed. Now, the Dispatcher
-
 ;                  can tell Lecky3_0 to set a light from yellow to green. (see above 3).
-
-;               
-
 ;               NOTE: For more details, please see the Daniel C. Lockwood report.
-
-;
-
 ;               NOTE: The old code was left in and commented out for reference.
 
-;
-
-; Description:
-; Arduino C code acia_arduino_comm which is complement of Echo 4.0
-; Echo 4.0 echoes all commands sent by the Hornby to the vector board computer
-; Echo 4.0 features two additional commands:
-; - Command "89" increments the Arduino counter from 0x00 by 1 until it hits the value of 0x0A
-; The Arduino counter is then reset to 0
-; - Command "88" resets the Arduino counter to 0x00
-; Note that RDATA is reset to 0x00 after an ACIA transmission. However, it keeps its value
-; if using commands different from 0x88 or 0x89
-; 
-; BEGIN C PROGRAM
-;/*
-; * Author: Pierre-Yves Taunay
-; * Date: November 2018
-; * MAE 412 ACIA/Arduino communication
-; * This is the Arduino part of the ACIA/Arduino Serial communication
-; */
-;
-;const int LEDPIN = 3;
-;const int NBLINK = 5;
-;int counter = 0;
-;int data = 0;
-;
-;/*
-; * Function: setup
-; * Description: 
-; * 1. sets up the baud rate, 
-; * 2. initializes an LED pin for debugging 
-; * 3. resets the initial counter to 0
-; */
-;void setup() {
-;  Serial.begin(9600);
-;  pinMode(LEDPIN,OUTPUT);
-;  counter = 0;
-;}
-;
-;/* 
-; *  Function: send_counter
-; *  Description: sends the variable "counter" away through serial comm.
-; *  The data is passed as a reference; const is used to avoid modifying counter.
-; *  Input: 
-; *  - counter: data to send
-; */
-;void send_counter(const int &counter) {
-;      // Indicate we are sending something
-;      for(int cnt = 0; cnt < NBLINK; ++cnt) {
-;        digitalWrite(LEDPIN,LOW);
-;        delay(100);
-;        digitalWrite(LEDPIN,HIGH);
-;      }     
-;      // Send the data away    
-;      Serial.write(counter);   
-;}
-;
-;/*
-; * Function: loop
-; * Description: waits for data to be available on the serial bus
-; * If the data received is 0x89, increment the counter
-; * If the data received is 0x88, reset the counter
-; * Otherwise, ignore
-; * If the counter gets to 10, reset it to 0
-; */
-;void loop() {
-;  // Read data from serial.read
-;  if(Serial.available() > 0) {
-;    // Indicate we received something, then read it
-;    digitalWrite(LEDPIN,HIGH); 
-;    data = Serial.read();
-;
-;    // If we receceive 0x89 or 0x88 from the ACIA...
-;    if (data == 0x88) {
-;      // Otherwise we reset the counter
-;      counter = 0;
-;      send_counter(counter);
-;    } else if(data == 0x89) { 
-;      // Then we increment the counter
-;      counter++;
-;      if(counter == 10)
-;        counter = 0;
-;
-;      send_counter(counter); 
-;    }
-;    digitalWrite(LEDPIN,LOW);
-;  }
-;  delay(10);
-;}
-; END OF C PROGRAM
-
-
-
 ; Label Declarations
-
-;
-
 DFLAG  EQU $3FF         ; 00 EQU No return data to send
-
-;                       FF EQU Return data ready to send
-
 WDATAH EQU $3FE         ; High byte of return data
-
 WDATAL EQU $3FD         ; Low byte of return data
-
 BLKID  EQU $3FC         ; Track computer block id number
-
 RDATA  EQU $3FB         ; Controller data sent to this computer
-
 FRANUM EQU $3FA         ; Current wave frame number
-
 OKWR   EQU $3F9         ; 00 EQU Controller not ready to accept return data
-
-;                       FF EQU Controller ready to accept return data
-
 INTMPU EQU $3F8         ; FF EQU MPU has issued a poll request
-
 POS    EQU $3F7         ; Output during positive power cycle
-
 NEG    EQU $3F6         ; Output during negative power cycle
-
 PLRTY  EQU $3F5         ; 00 EQU Negative polarity, FF EQU Positive polarity
-
 LCV    EQU $3F4         ; Local variable
-
 MASK   EQU $3F3         ; Local constant
-
 CNT    EQU $3F2         ; Local variable
-
 TIME   EQU $3F1         ; Median period of a '0' and a '1' bit of
-
-;                           controller data
-
 NRTHGN EQU $32B                 ; Flag to tell if north light is green #$00 off #$FF on
-
 SUTHGN EQU $32A                 ; Flag to tell if south light green - #$00 off #$FF on
-
-;
-
 NOVRD  EQU $32C         ; *** V 3.1 *** OVERRIDE OF NORTH LIGHTS/KILLS
-
-			; *** V 3.1 *** $00 -> NO OVERRIDE
-
 SOVRD  EQU $32D         ; *** V 3.1 *** OVERRIDE OF SOUTH LIGHTS/KILLS
-
-			; *** V 3.1 *** $00 -> NO OVERRIDE
-
-;
-
 WBUF   EQU $3D0         ; Output table - Data to be written to port B
-
 FTAB   EQU $3AC         ; Reconstructed 'nibbles' of control data
-
 LFLAG  EQU $377
-
 STFLG  EQU $389         ; ALL NEW AND IMPORTANT
-
 TABLE  EQU $38A         ; Input table - IFR contents for each input cycle
-
-;
-
 NTRAIN EQU $3CF         ; Train number on north track
-
 STRAIN EQU $3CE         ; Train number on south track
-
 STSDTR EQU $3CD         ; Student-use location for train on siding
-
-;CAUT   EQU $3CC         ; Caution bit control byte - left over V2.0
-
-;SIDTR  EQU $3CB         ; Program-use  siding train save area - left over V2.0
-
-;RELDEL EQU $3CA         ; Delay count save area for siding train release - V2.0
-
-;CLRDEL EQU $3C9         ; Delay count save area for clear track check - V2.0
-
 BCRASM EQU $3C8         ; Location for bar code shift in
-
 SCOUNT EQU $3C7         ; Delay count for reader passage of south train
-
 NCOUNT EQU $3C6         ; Delay count for reader passage of north train
-
 SASSEM EQU $3C5         ; Assemble area for south train number
-
 NASSEM EQU $3C4         ; Assemble area for north train number
-
-;LEAVTR EQU $3C3         ; Save area for siding train requesting mainline - V2.0
-
 CONTRL EQU $3C2         ; Save area for control bits-lights, track kills
-
 CBITS  EQU $3C1         ; Save area for communications bits during LOCCON
-
 YLTOGN EQU $3C0                 ; Toggle for which light to turn from yellow to green
 
-						;    01 -> south light, 02 -> north light
-
-;
-
-;
-
 ;       Versatile Interace Adapter  (VIA)  Addresses
-
-;
-
 VDDRB  EQU $A002        ;  Data direction register B
-
 VORB   EQU $A000        ; Output register B
-
 VT2L   EQU $A008        ; Timer 2 low byte
-
 VT2H   EQU $A009        ; Timer 2 high byte
-
 VACR   EQU $A00B        ; Auxilliary control register
-
 VPCR   EQU $A00C        ; Peripheral control register
-
 VIFR   EQU $A00D        ; Interrupt flag register
-
 VIER   EQU $A00E        ; Interrupt enable register
-
-;
 
 ; ACIA Addresses and variables
 ACIA    EQU $8004		; Input/output address
-
 ACIASR  EQU $8005		; ACIA Status register
-
 ACIACMR EQU $8006        ; ACIA Command Register
-
 ACIACCR EQU $8007		; ACIA Control Register
 
-
 ;   **** BEGINNING OF USER SECTION ****
-
-;VIA $8000 ADDRESSES
-
+;	VIA $8000 ADDRESSES
 V8BI	EQU $8000
-
 V8BD	EQU $8002
-
 V8AO	EQU $8001
-
 V8AD	EQU $8003
 
 
 
-;LOCAL VARIABLES
-
+;	LOCAL VARIABLES
 DISP	EQU $4000
 
-
-
-;INITIALIZATION
-
+;	INITIALIZATION
 	ORG $E000
-
 	SEI
-
 	CLD
-
 	LDX #$FF
-
 	TXS
-
 	LDA #$05	; THIS IS COMPUTER No. 5
-
 	STA BLKID
-
 	LDA #$00
-
 	STA NOVRD	; NO OVERRIDE ON NORTH TRACK
-
 	STA SOVRD	; NO OVERRIDE ON SOUTH TRACK
-
 	STA DFLAG       ; NO DATA TO SEND
-	
-	LDA #$FE
-	STA DISP
 
-	JSR INIT        ; INITIALIZATION
-	
-	LDA #$FD
+	; Set Display to FF to acknowledge that Hornby isn't plugged in yet
+	LDA #$FF
 	STA DISP
+	; Initialize Hornby
+	JSR INIT        ; INITIALIZATION
 
 	JSR INITACIA	; INITIALIZE THE ACIA
-	
+
+	; Set Display to 00 to acknowledge that all initialization went smoothly
 	LDA #$00 ; PUT 00 ON THE DISPLAY
 	STA DISP	
 	
@@ -328,7 +110,7 @@ ARENA
 	LDA RDATA; Wait for RDATA to start the routine. Can be anything
 	STA DISP ; Display RDATA received
 
-	; If we receive 88 or 89, go to the ACIATX routine and then to ACIARX
+	; If we receive 0x81 <-> 0x89, go to the ACIATX routine and then to ACIARX
 	CMP #$81
 	BEQ ACIATX
 	CMP #$82
@@ -426,617 +208,296 @@ INITACIA
 ;
 
 ;   **** LECKY ROUTINE START ****
-
-;
-
 	ORG $FB00
-
-;
-
 ;       Procedure:  INIT
-
 ;       Function :  initialize variables, synchronize with track waveform
-
-;
-
 ;       NOTE BENE:  This procedure has been altered since J. Gurian and D. Simon
-
-;                            wrote their project report
-
-;
-
+;                   wrote their project report
 INIT    SEI
-
 	LDA #$FB
-
 	STA VDDRB
-
 	LDX #00
 
 CKPLS   LDA #00
-
 	STA VORB
-
 	LDA #01
-
 	STA VORB
-
 	INX
-
 	CPX #$08
-
 	BNE CKPLS
-
 	LDA #00
-
 	STA LFLAG
-
 	STA RDATA
-
 	STA VACR
-
 	STA INTMPU
-
 	STA OKWR
-
 	STA CONTRL
-
 	STA NASSEM
-
 	STA SASSEM
-
 	STA NCOUNT
-
 	STA SCOUNT
-
 	STA BCRASM
-
-;        STA SIDTR
-
 	STA NTRAIN
-
 	STA STRAIN
-
-;        STA LEAVTR
-
-;        STA CAUT
-
-;               LDA #$00             ; *** V 3.1 *** COMMENT OUT
-
-		STA NRTHGN
-
-		STA SUTHGN
-
+	STA NRTHGN
+	STA SUTHGN
 	STA NOVRD
-
 	STA SOVRD
-
-		LDA #$01          ;             Initialize YLTOGN to South mailbox
-
-		STA YLTOGN
-
+	LDA #$01          ;             Initialize YLTOGN to South mailbox
+	STA YLTOGN
 	LDA #$7F
-
 	STA VIER      ;         Clear all interrupts
-
 	LDA #$98
-
 	STA VIER      ;         Enable CB1, CB2 Interrupts
-
 	JSR PWRPOL    ;         Determine polarity of input signal
-
 	JSR PANIC     ;         Synchronize with track waveform
 
-;
-
 ;       Find the period of a '0' or '1' and compute an intermediate value
-
-;
-
 	LDA VORB       ;        Clear interrupt flag in IFR
-
 	JSR WTHF       ;        Wait for high frequency portion of waveform
-
 	LDA #255
-
 	STA VT2L       ;        Set timer for 255 u-secs
-
 	JSR WTCB1      ;        Align to a CB1 interrupt
-
 	LDA #00
-
 	STA VT2H
-
 	LDA VORB
-
 	JSR WTCB1
-
 	LDA VT2L
-
 	STA TIME
-
 	SEC
-
 	LDA #255
-
 	SBC TIME
-
 	SBC #02
-
 	CMP #110
-
 	BMI SHORT
-
 	LSR A
 
-SHORT   STA TIME
-
-	CLC
-
-	LSR A
-
-	CLC
-
-	ADC TIME
-
-;
-
-	SBC #38        ;        Subtract constant due to timing errors from
-
-;                      ;          execution of instructions
-
+SHORT
 	STA TIME
-
+	CLC
+	LSR A
+	CLC
+	ADC TIME
+	SBC #38        ;        Subtract constant due to timing errors from execution of instructions
+	STA TIME
 	CLI
-
 	RTS
 
-;
-
 ;       Routine:  ISERV
-
 ;       Function: Interrupt service routine, calls lower level routines
-
-;
-
 ISERV   SEI
-
-;                     ; Push registers on system stack
-
+	; Push registers on system stack
 	PHA
-
 	TXA
-
 	PHA
-
 	TYA
-
 	PHA
-
 	LDA #$10
-
 	BIT VIFR      ; Test for CB1 interrupt
-
 	BNE VCB1      ; Branch if found
-
 	LDA #$08
-
 	BIT VIFR      ; Test for CB2 interrput
-
 	BEQ RETURN    ; Skip if not found
-
 	JMP VCB2
 
-;                       RETURN  - restore stack and leave
-
+;       RETURN  - restore stack and leave
 RETURN  PLA
-
 	TAY
-
 	PLA
-
 	TAX
-
 	PLA
-
 	RTI
 
-;
-
 ;       Routine :   VCB1
-
 ;       Function:   Handle CB1 interrputs
 
-;
-
 VCB1    INC FRANUM
-
 	LDA FRANUM
-
 	CMP #06
-
 	BMI LESS
-
 	JMP PANIC2
 
 LESS    LDA #$20
-
 	BIT VIFR
-
 	BNE L1
-
 	JMP PANIC2
 
 L1      LDA #00
-
 	STA VT2L
-
 	LDA #$30
-
 	STA VT2H      ; Set timer2 EQU 12288 u-secs
-
 	LDA NEG
-
 	ORA #01       ; Make sure PB0 is set
-
 	STA VORB
-
 	LDA FRANUM
-
 	CMP #02
-
 	BNE L2
-
 	JSR LOCCON
-
 L2      JMP RETURN
 
-;
-
 ;       Routine :   PWRPOL
-
 ;       Function:   Determine polarity of track signal
-
-;
-
-;
-
-;
-
-;
-
 PWRPOL  LDA #$40
-
 	STA POS
-
 	STA VPCR
-
 	LDA #$FF
-
 	STA PLRTY     ; Set polarity to positive
-
 	LDA #$20
-
 	STA NEG
-
 	LDA #00
-
 	STA VT2L      ; Set low Timer2 byte to zero
-
-;
-
-;
-
 	LDX #100
-
 	LDA VORB
-
 	JSR WTCB2
 
 TSTLP   DEX
-
 	BEQ TSTEND
-
 	LDA #$30
-
 	STA VT2H
-
 	LDA VORB
-
 	JSR WTCB2
-
 	LDA VT2H
-
 	STA TIME      ; Store time between CB2 interrputs
-
 	LDA VIFR
-
 	BIT T2TEST
-
 	BNE TSTLP
-
 	LDA TIME
-
 	CMP #$11
-
 	BPL TSTLP
 
-;
-
-;
-
-;
-
 	LDA #00
-
 	STA PLRTY
-
 	LDA #$20
-
 	STA POS
-
 	LDA #$10
-
 	STA VPCR
-
 	LDA #$40
-
 	STA NEG
 
 TSTEND  RTS
 
-;
-
 ;       Procedure:   PANIC
-
 ;       Function :   Synchronize ISERV with track waveform
-
-;
-
 PANIC   JSR WTHF      ; Wait for data portion of waveform
-
 	LDA #00
-
 	STA VT2L      ; Zero low byte of Timer2
-
 PLOOP   LDA #$01
-
 	STA VT2H      ; Set Timer2 for 255 u-secs
-
 	JSR WTCB1
-
 	LDA VORB      ; Clear IFR of CB2 interrput
-
 	LDA VIFR
-
 	BIT T2TEST    ; Has Timer2 timed out?
-
 	BEQ PLOOP     ; If not, go back
 
-;
-
-;
-
 	LDA #02
-
 	STA FRANUM
-
-;
 
 	RTS
 
-;
-
 ;       Routine :   PANIC2
-
 ;       Function:   Calls subroutine PANIC and then branches to return
-
-;
-
 PANIC2  JSR PANIC
-
 	JMP RETURN
 
-;
-
 ;       Procedure:   PARITY
-
 ;       Function :   Performs four-bit addition of controller nibbles
-
 ;                    Returns '0F' in register A if there is no parity error
-
-;
-
 PARITY  LDA #$08
-
 	STA CNT
-
 	CLC
-
 	LDA #00
-
 	TAX
 
 ALOOP   ADC FTAB,X    ; Adds up nibbles
-
 	BIT AMASK
-
 	BEQ A1
-
 	SEC
-
 	BCS A2
 
 A1      CLC
 
 A2      INX
-
 	AND #$EF
-
 	DEC CNT
-
 	BNE ALOOP
-
 	RTS
 
 AMASK   DB $10
 
-;
-
 ;       Procedure:   WTCB1
-
 ;       Function :   Wait for a CB1 interrupt and then return
-
-;
-
 WTCB1  LDA #$10
 
 ABC     BIT VIFR
-
 	BEQ ABC
-
 	RTS
 
-;
-
 ;       Procedure:   WTCB2
-
 ;       Function :   Wait for a CB2 interrupt and then return
-
-;
-
 WTCB2  LDA #$08
 
 XYZ     BIT VIFR
-
 	BEQ XYZ
-
 	RTS
 
-;
-
 ;       Procedure:   WT2
-
 ;       Function :   Wait for Timer2 to time out and then return
-
-;
-
 WT2     LDA #$20
 
 CBA     BIT VIFR
-
 	BEQ CBA
-
 	RTS
 
-;
-
 ;       Procedure:   WTHF
-
 ;       Function :   Wait for the high frequency portion of the waveform
-
-;
-
 WTHF    LDA VORB
-
 	JSR WTCB1
-
 	LDA #00
-
 	STA VT2L
 
 HFLOOP  LDA #$01
-
 	STA VT2H
-
 	LDA VORB
-
 	JSR WTCB1
-
 	LDA #$20
-
 	BIT VIFR
-
 	BNE HFLOOP
 
-;
-
-;
-
 	LDA VORB      ; Clear CB interrupts
-
 	RTS
 
-;
-
 ;       Procedure:   VCB2
-
 ;       Function :   Handle CB2 interrupts
-
-;
-
 VCB2    INC FRANUM
-
 	LDA #05
-
 	CMP FRANUM
-
 	BMI PANIC2
-
 	BEQ CONT1
-
 	LDA POS
-
 	ORA #$01
-
 	STA VORB
-
 	JMP RETURN
 
 CONT1   LDA #$81
-
 	STA VORB      ; Set PB7,PB0 on - signal data frame to outside world
 
-;
-
 ;       NEW SECTION FOR AUTOMATIC STATUS REPORTING
-
-;
-
 	LDA STFLG
-
 	BEQ CONTQ     ; If STFLG EQU 0, then there is no status request
-
 	LDA WDATAL    ; If STFLG <> 0, then save  WDATAH and WDATAL
-
 	PHA
-
 	LDA WDATAH    ;         onto the stack they go!
-
 	PHA
-
 	LDA BCRASM    ; BCRASM contains NTRAIN in high four bits,
-
 		      ;   and STRAIN in low four bits
-
 	STA WDATAH    ; Send train numbers in high byte of return data
-
 	LDA CONTRL
-
 		AND #$FC          ; DL AND out 2 least significant bits i.e. track kill bits
-
 		ORA YLTOGN    ; DL ORs the last two bits so Master Comp can see toggle
-
 	STA WDATAL    ; Send light and track kill data back in low byte
-
 	JMP CONT4     ; And send immediately - don't mess with other flags
 
-;
-
-;
-
 CONTQ   LDA DFLAG
-
 	BNE CONT2
 
 	JSR ZERO
