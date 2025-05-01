@@ -28,6 +28,11 @@ const int HALL5PIN = 13;
 const int PICKUPSERVOPIN = 5;
 const int DROPOFFSERVOPIN = 6;
 
+const int TRICKLE1PIN = A0;
+const int TRICKLE2PIN = A1;
+const int TRICKLE3PIN = A2;
+
+
 // Response and Request Bytes for ACIA
 byte req;
 byte res;
@@ -122,10 +127,10 @@ byte handleACIA(byte data) {
       returnData = handlePickupServo();
       break;
     case 0x87:
-      returnData = handlePickupServo();
+      returnData = handleDropoffServo();
       break;
     case 0x88:
-      returnData = handlePickupServo();
+      returnData = 0x00;
       break;
     case 0x89:
       returnData = handleColorSensor();
@@ -161,28 +166,33 @@ byte handleHallEffect5() {
   return hall5;
 }
 
-// State: 
-//  0 - Marble Pickup
-//  1 - Marble Sense
-//  2 - Marble Drop
+byte handlePickupServo() {
+  pickupServo.write(0);
+  delay(250);
+  pickupServo.write(180);
+  delay(250);
+  pickupServo.write(0);
+  delay(250);
+  pickupServo.write(180);
+  delay(250);
 
-// TODO 
-byte handlePickupServo(int state) {
-   switch (state) {
-    case 0:
-      return 0x01;
-      break;
-    case 1:
-      return 0x01;
-      break;
-    case 2:
-      return 0x01;
-      break;
-    default:
-      return 0x00;
-      break;
-  }
+  return 0x01;
 }
+
+byte handleDropoffServo() {
+  dropoffServo.write(0);
+  delay(250);
+  dropoffServo.write(180);
+  delay(250);
+  dropoffServo.write(0);
+  delay(250);
+  dropoffServo.write(180);
+  delay(250);
+
+  return 0x01;
+}
+
+
 
 // ------------------------------------------------------------
 // UPDATER FUNCTIONS: 
