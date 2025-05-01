@@ -28,9 +28,12 @@ const int HALL5PIN = 13;
 const int PICKUPSERVOPIN = 5;
 const int DROPOFFSERVOPIN = 6;
 
-const int TRICKLE1PIN = A0;
-const int TRICKLE2PIN = A1;
-const int TRICKLE3PIN = A2;
+const int TRICKLE_ENTRANCE_DIR_PIN = A0;
+const int TRICKLE_DROP1_DIR_PIN = A1;
+const int TRICKLE_DROP2_DIR_PIN = A2;
+
+const int TRICKLE_ENTRANCE_TRIG_PIN = 7;
+const int TRICKLE_DROP_TRIG_PIN = 8;
 
 
 // Response and Request Bytes for ACIA
@@ -74,6 +77,13 @@ void setup() {
   // Set Up Servo Motos with Arduino Digital Pins
   pickupServo.attach(PICKUPSERVOPIN); 
   dropoffServo.attach(DROPOFFSERVOPIN);
+
+  // Set up trickle pins
+  pinMode(TRICKLE_ENTRANCE_DIR_PIN, OUTPUT);
+  pinMode(TRICKLE_DROP1_DIR_PIN, OUTPUT);
+  pinMode(TRICKLE_DROP2_DIR_PIN, OUTPUT);
+  pinMode(TRICKLE_ENTRANCE_TRIG_PIN, OUTPUT);
+  pinMode(TRICKLE_DROP_TRIG_PIN, OUTPUT);
 }
 
 void loop() {
@@ -191,6 +201,26 @@ byte handleDropoffServo() {
 
   return 0x01;
 }
+
+byte handleEntranceRamp() {
+  // Logic for trickle charges
+  Serial.println("Entrance Ramp Logic Not implemented yet.");
+  return 0x00;
+}
+
+byte handleNorthDrop() {
+  // Logic for trickle charges
+  Serial.println("North Dropoff Logic Not implemented yet.");
+  return 0x00;
+}
+
+byte handleSouthDrop() {
+  // Logic for trickle charges
+  Serial.println("South Dropoff Logic Not implemented yet.");
+  return 0x00;
+}
+
+
 
 
 
