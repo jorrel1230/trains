@@ -118,6 +118,19 @@ byte handleACIA(byte data) {
   byte returnData;
   
   switch (data) {
+
+    case 0x01:
+      returnData = onTrickleEntranceTrigger();
+      break;
+    case 0x02:
+      returnData = offTrickleEntranceTrigger();
+      break;
+    case 0x03:
+      returnData = onTrickleDropTrigger();
+      break;
+    case 0x04:
+      returnData = offTrickleDropTrigger();
+      break;
     case 0x81:
       returnData = handleHallEffect1();
       break;
@@ -220,7 +233,29 @@ byte handleSouthDrop() {
   return 0x00;
 }
 
+// Togglers
+byte onTrickleEntranceTrigger() {
+  digitalWrite(TRICKLE_ENTRANCE_TRIG_PIN, HIGH);
+  return 0x01;
+}
 
+// Togglers
+byte offTrickleEntranceTrigger() {
+  digitalWrite(TRICKLE_ENTRANCE_TRIG_PIN, LOW);
+  return 0x01;
+}
+
+// Togglers
+byte onTrickleDropTrigger() {
+  digitalWrite(TRICKLE_DROP_TRIG_PIN, HIGH);
+  return 0x01;
+}
+
+// Togglers
+byte offTrickleDropTrigger() {
+  digitalWrite(TRICKLE_DROP_TRIG_PIN, LOW);
+  return 0x01;
+}
 
 
 

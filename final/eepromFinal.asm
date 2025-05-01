@@ -111,6 +111,15 @@ ARENA
 	STA DISP ; Display RDATA received
 
 	; If we receive 0x81 <-> 0x89, go to the ACIATX routine and then to ACIARX
+	CMP #$01
+	BEQ ACIATX
+	CMP #$02
+	BEQ ACIATX
+	CMP #$03
+	BEQ ACIATX
+	CMP #$04
+	BEQ ACIATX
+
 	CMP #$81
 	BEQ ACIATX
 	CMP #$82
@@ -141,7 +150,6 @@ ACIATX
 
 	LDA RDATA ; Accumulator has been overwritten already; make sure we reload RDATA
 	STA ACIA ; Send RDATA to the ACIA TX 
-	; JSR DELAY ; Delay before we go back to checking the data
 
 ; We now start to load the ACIA with some data...
 ACIARX	
