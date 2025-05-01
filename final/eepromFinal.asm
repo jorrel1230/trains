@@ -110,8 +110,25 @@ ARENA
 	LDA RDATA; Wait for RDATA to start the routine. Can be anything
 	STA DISP ; Display RDATA received
 
-	CMP #$01
-	BNE ACIATX
+	; If we receive 0x81 <-> 0x89, go to the ACIATX routine and then to ACIARX
+	CMP #$81
+	BEQ ACIATX
+	CMP #$82
+	BEQ ACIATX
+	CMP #$83
+	BEQ ACIATX
+	CMP #$84
+	BEQ ACIATX
+	CMP #$85
+	BEQ ACIATX
+	CMP #$86
+	BEQ ACIATX
+	CMP #$87
+	BEQ ACIATX
+	CMP #$88
+	BEQ ACIATX
+	CMP #$89
+	BEQ ACIATX	
 
 	JMP ARENA; If it is still 00, wait for meaningful rdata
 
@@ -137,6 +154,9 @@ ACIARX
 	LDA ACIA ; Read the buffer
 	; We store the number received on the display
 	STA DISP ; Display the code obtained
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
 	JSR DELAY
 
 	; Reset RDATA, then wait for the user to put in RDATA
