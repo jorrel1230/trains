@@ -110,25 +110,8 @@ ARENA
 	LDA RDATA; Wait for RDATA to start the routine. Can be anything
 	STA DISP ; Display RDATA received
 
-	; If we receive 0x81 <-> 0x89, go to the ACIATX routine and then to ACIARX
-	CMP #$81
-	BEQ ACIATX
-	CMP #$82
-	BEQ ACIATX
-	CMP #$83
-	BEQ ACIATX
-	CMP #$84
-	BEQ ACIATX
-	CMP #$85
-	BEQ ACIATX
-	CMP #$86
-	BEQ ACIATX
-	CMP #$87
-	BEQ ACIATX
-	CMP #$88
-	BEQ ACIATX
-	CMP #$89
-	BEQ ACIATX	
+	CMP #$01
+	BNE ACIATX
 
 	JMP ARENA; If it is still 00, wait for meaningful rdata
 
@@ -145,11 +128,6 @@ ACIATX
 
 ; We now start to load the ACIA with some data...
 ACIARX	
-	LDA #$AD ;Indicate AD when waiting for the ACIA RX buffer to be filled with Arduino data
-	STA DISP
-
-	JSR DELAY
-		
 	; Is the buffer full? If not, wait for it to be filled
 	LDA ACIASR 	; Load he status register  	
 	; BIT #$08 	; Is buffer full?
@@ -159,9 +137,6 @@ ACIARX
 	LDA ACIA ; Read the buffer
 	; We store the number received on the display
 	STA DISP ; Display the code obtained
-	JSR DELAY
-	JSR DELAY
-	JSR DELAY
 	JSR DELAY
 
 	; Reset RDATA, then wait for the user to put in RDATA
