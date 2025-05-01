@@ -141,7 +141,7 @@ ACIATX
 
 	LDA RDATA ; Accumulator has been overwritten already; make sure we reload RDATA
 	STA ACIA ; Send RDATA to the ACIA TX 
-	JSR DELAY ; Delay before we go back to checking the data
+	; JSR DELAY ; Delay before we go back to checking the data
 
 ; We now start to load the ACIA with some data...
 ACIARX	
