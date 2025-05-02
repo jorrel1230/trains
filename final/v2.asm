@@ -1,3 +1,7 @@
+; Author : Jorrel Rajan
+; Full Final file with FSM
+
+
 ;       Lecky Routine    V3.1      typed by Tad Coburn
 ;       modified by Dan Lockwood (V2.0 -> V3.0)
 ;       MODIFIED BY MGL (V3.0 -> V3.1)
@@ -51,7 +55,11 @@ SASSEM EQU $3C5         ; Assemble area for south train number
 NASSEM EQU $3C4         ; Assemble area for north train number
 CONTRL EQU $3C2         ; Save area for control bits-lights, track kills
 CBITS  EQU $3C1         ; Save area for communications bits during LOCCON
-YLTOGN EQU $3C0                 ; Toggle for which light to turn from yellow to green
+YLTOGN EQU $3C0		; Toggle for which light to turn from yellow to green
+
+;	INTERACTIVE CONTROL LOCATIONS
+CMDIC EQU $3CA		; Stores the command we wish to run. EX: 01, 02, or 03.
+
 
 ;       Versatile Interace Adapter  (VIA)  Addresses
 VDDRB  EQU $A002        ;  Data direction register B
@@ -105,41 +113,44 @@ DISP	EQU $4000
 	; Set Display to 00 to acknowledge that all initialization went smoothly
 	LDA #$00 ; PUT 00 ON THE DISPLAY
 	STA DISP	
+
+WAITFORSTART
+	LDA NTRAIN
+	BEQ WAITFORSTART
+
+;OUTSIDE
 	
+
+
 ARENA   
-	LDA RDATA; Wait for RDATA to start the routine. Can be anything
-	STA DISP ; Display RDATA received
+	LDA #$01
+	STA CMDIC
+	JSR SENDIC
 
-	; If we receive 0x81 <-> 0x89, go to the ACIATX routine and then to ACIARX
-	CMP #$01
-	BEQ ACIATX
-	CMP #$02
-	BEQ ACIATX
-	CMP #$03
-	BEQ ACIATX
-	CMP #$04
-	BEQ ACIATX
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
 
-	CMP #$81
-	BEQ ACIATX
-	CMP #$82
-	BEQ ACIATX
-	CMP #$83
-	BEQ ACIATX
-	CMP #$84
-	BEQ ACIATX
-	CMP #$85
-	BEQ ACIATX
-	CMP #$86
-	BEQ ACIATX
-	CMP #$87
-	BEQ ACIATX
-	CMP #$88
-	BEQ ACIATX
-	CMP #$89
-	BEQ ACIATX	
+	LDA #$02
+	STA CMDIC
+	JSR SENDIC
 
-	JMP ARENA; If it is still 00, wait for meaningful rdata
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
+
+	LDA #$03
+	STA CMDIC
+	JSR SENDIC
+
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
+
+	JMP ARENA
 
 ; We got RDATA, now send it to the arduino
 ACIATX	
@@ -173,7 +184,7 @@ ACIARX
 
 	JMP ARENA	
 
-DELAY	
+DELAY
 	INX
 	BNE DELAY
 	INY
@@ -202,6 +213,25 @@ INITACIA
     	LDA ACIA
     	RTS
 
+
+
+; ********************************************
+;	INTERACTIVE CONTROL COMMANDS
+; ********************************************
+SENDIC	
+	LDA CMDIC
+	STA WDATAH
+	STA DISP
+	LDA #$00
+	STA RDATA
+	LDA #$FF
+	STA DFLAG
+WAIT1
+	LDA RDATA
+	STA DISP
+	BEQ WAIT1
+
+	RTS
 
 
 ;   **** END OF USER SECTION ****
