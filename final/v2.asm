@@ -57,8 +57,9 @@ CONTRL EQU $3C2         ; Save area for control bits-lights, track kills
 CBITS  EQU $3C1         ; Save area for communications bits during LOCCON
 YLTOGN EQU $3C0		; Toggle for which light to turn from yellow to green
 
-;	INTERACTIVE CONTROL LOCATIONS
-CMDIC EQU $3CA		; Stores the command we wish to run. EX: 01, 02, or 03.
+;	Jorrel's memory locations.
+CMDIC	EQU $3CA		; Stores the command we wish to run. EX: 01, 02, or 03.
+ENGNUM	EQU $3CB		; Stores our engine number. this is set in initialization.
 
 
 ;       Versatile Interace Adapter  (VIA)  Addresses
@@ -110,6 +111,10 @@ DISP	EQU $4000
 
 	JSR INITACIA	; INITIALIZE THE ACIA
 
+	; Set our engine number
+	LDA #$12
+	STA ENGNUM
+
 	; Set Display to 00 to acknowledge that all initialization went smoothly
 	LDA #$00 ; PUT 00 ON THE DISPLAY
 	STA DISP	
@@ -118,8 +123,86 @@ WAITFORSTART
 	LDA NTRAIN
 	BEQ WAITFORSTART
 
-;OUTSIDE
+OUTSIDE
+	; Set Speed High
+	LDA #$03
+	STA CMDIC
+	JSR SENDIC
+
+	; Loop on NTRAIN. If it is the correct engine, then transition 
+	; to STARTSEQ. else, transition to SKIPSEQ.
+
+CHECKNTRAIN
+	LDA NTRAIN
+	BEQ CHECKNTRAIN
+
+	; once we have ntrain, compare.
+	CMP ENGNUM	; NOTE: can i compare directly to mem location???
+
+	; If comparison successful, start sequence. otherwise just skip
+	BEQ STARTSEQ
+	JMP SKIPSEQ
+
+SKIPSEQ
+	; NOTE: SET UPPER TRACKS STRAIGHT.
 	
+	JMP OUTSIDE
+
+STARTSEQ
+	; NOTE: wait until HALL 1: LOW. then, transition to SLOW PICKUP
+
+	JMP SLOWPICKUP
+
+SLOWPICKUP
+	; SET SPEED TO SLOW.
+	LDA #$02
+	STA CMDIC
+	JSR SENDIC
+
+	; NOTE: wait until HALL 2: LOW. then, transition to STOP PICKUP
+	JMP STOPPICKUP
+
+STOPPICKUP
+	; STOP TRAIN.
+	LDA #$01
+	STA CMDIC
+	JSR SENDIC
+
+	; NOTE: trigger the color routine
+	; NOTE: SET UPPER TRACKS CURVED IN.
+	; NOTE: SET LOWER TRACKS TO CORRESPONDING COLOR.
+
+	JSR DELAY ; NOTE: prolly want to delay here, can be removed
+
+	JMP FASTDROPOFF
+
+FASTDROPOFF
+	; set speed FAST
+	LDA #$03
+	STA CMDIC
+	JSR SENDIC
+
+	; NOTE: wait until HALL 3: LOW. then, transition to SLOW DROPOFF
+	JMP SLOWDROPOFF
+
+SLOWDROPOFF
+	; SET SPEED TO SLOW.
+	LDA #$02
+	STA CMDIC
+	JSR SENDIC
+ 
+	; NOTE: Check if HALL 4 OR 5: LOW. then, transition to STOP DROPOFF
+	JMP STOPDROPOFF
+
+STOPDROPOFF
+		; STOP TRAIN.
+	LDA #$01
+	STA CMDIC
+	JSR SENDIC
+
+	; NOTE: trigger DROPOFF ROUTINE.
+	; NOTE: Check if HALL 2: LOW. then, UPPER TRACKS STRAIGHT. then, transition to OUTSIDE
+	JMP OUTSIDE
 
 
 ARENA   
