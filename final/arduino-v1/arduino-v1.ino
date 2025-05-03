@@ -236,6 +236,7 @@ byte handleSouthDrop() {
 // Togglers
 byte trickleEntranceTrigger() {
   digitalWrite(TRICKLE_ENTRANCE_TRIG_PIN, HIGH);
+
   return 0x01;
 }
 

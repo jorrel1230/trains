@@ -58,8 +58,9 @@ CBITS  EQU $3C1         ; Save area for communications bits during LOCCON
 YLTOGN EQU $3C0		; Toggle for which light to turn from yellow to green
 
 ;	Jorrel's memory locations.
-CMDIC	EQU $3CA		; Stores the command we wish to run. EX: 01, 02, or 03.
-ENGNUM	EQU $3CB		; Stores our engine number. this is set in initialization.
+CMDIC		EQU $3CA		; Stores the command we wish to run. EX: 01, 02, or 03.
+ENGNUM		EQU $3CB		; Stores our engine number. this is set in initialization.
+ARDUSEND	EQU $3CC		; put data in here before sending stuff to arduino
 
 
 ;       Versatile Interace Adapter  (VIA)  Addresses
@@ -205,67 +206,30 @@ STOPDROPOFF
 	JMP OUTSIDE
 
 
-ARENA   
-	LDA #$01
-	STA CMDIC
-	JSR SENDIC
 
-	JSR DELAY
-	JSR DELAY
-	JSR DELAY
-	JSR DELAY
 
-	LDA #$02
-	STA CMDIC
-	JSR SENDIC
 
-	JSR DELAY
-	JSR DELAY
-	JSR DELAY
-	JSR DELAY
 
-	LDA #$03
-	STA CMDIC
-	JSR SENDIC
 
-	JSR DELAY
-	JSR DELAY
-	JSR DELAY
-	JSR DELAY
-
-	JMP ARENA
-
-; We got RDATA, now send it to the arduino
 ACIATX	
 	LDA ACIASR ; Load the status register
-	; BIT #$10 ; Is the ACIA TX line clear?
 	AND #$10 ; Is the ACIA TX line clear?
 	BEQ ACIATX; If it is not, then wait...
 
-	LDA RDATA ; Accumulator has been overwritten already; make sure we reload RDATA
+	LDA ARDUSEND ; Accumulator has been overwritten already; make sure we reload RDATA
 	STA ACIA ; Send RDATA to the ACIA TX 
 
 ; We now start to load the ACIA with some data...
 ACIARX	
 	; Is the buffer full? If not, wait for it to be filled
-	LDA ACIASR 	; Load he status register  	
-	; BIT #$08 	; Is buffer full?
+	LDA ACIASR 	; Load the status register  	
 	AND #$08 	; Is buffer full?
 	BEQ ACIARX	; If not, then wait...
 
 	LDA ACIA ; Read the buffer
-	; We store the number received on the display
 	STA DISP ; Display the code obtained
-	JSR DELAY
-	JSR DELAY
-	JSR DELAY
-	JSR DELAY
-
-	; Reset RDATA, then wait for the user to put in RDATA
-	LDA #$00
-	STA RDATA
-
-	JMP ARENA	
+	
+	RTS	
 
 DELAY
 	INX
