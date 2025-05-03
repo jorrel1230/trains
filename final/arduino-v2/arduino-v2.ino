@@ -74,6 +74,8 @@ void setup() {
   // Set all initial states
   color = 'N'; // not found yet
   handleEntranceRamp(true); // make entrance ramp tracks initially straight
+  pickupServo.write(0);
+  dropoffServo.write(90);
 }
 
 void loop() {
@@ -146,12 +148,38 @@ byte pickupRoutine() {
   pickupServo.write(180);
 
   delay(1000); // experimental delay
+  //
+  // Move Servo to normal
+  for (int i = 180; i >= 0; i++) {
+    pickupServo.write(i);
+    delay(5);
+  }
+  pickupServo.write(0);
 
   return (color == 'B' ? 0xC0 : 0xCF);
 }
 
 byte dropoffRoutine() {
-  // NOTE: servo control thingies needed here.
+  // servo control thingies needed here.
+  if (color == 'B') {
+    for (int i = 90; i <= 180; i++) {
+      dropoffServo.write(i);
+      delay(10);
+    }
+    for (int i = 180; i >= 90; i--) {
+      dropoffServo.write(i);
+      delay(10);
+    }
+  } else {
+    for (int i = 90; i >= 0; i--) {
+      dropoffServo.write(i);
+      delay(10);
+    }
+    for (int i = 0; i <= 90; i++) {
+      dropoffServo.write(i);
+      delay(10);
+    }
+  }
 
   // After a delay. make tracks straight.
   waitHall();
