@@ -1,11 +1,6 @@
 // arduinoFinal.ino
 // Author: Jorrel Rajan
 
-// ------------------------------------------------------------
-// Arduino Program that acts an an 'API' for the ACIA to query.
-// Maintains internal states that can be requested at any time.
-// ------------------------------------------------------------
-
 // Include all necessary libraries
 #include <SoftwareSerial.h>
 #include <Arduino_APDS9960.h>
@@ -19,11 +14,7 @@ Servo pickupServo;
 Servo dropoffServo;
 
 // Pin Definitions
-const int HALL1PIN = 9;
-const int HALL2PIN = 10;
-const int HALL3PIN = 11;
-const int HALL4PIN = 12;
-const int HALL5PIN = 13;
+const int HALL_PIN = 9;
 
 const int PICKUPSERVOPIN = 5;
 const int DROPOFFSERVOPIN = 6;
@@ -40,11 +31,15 @@ const int TRACK_RELAY_PIN = A3;
 // Response and Request Bytes for ACIA
 byte req;
 byte res;
-byte color;
 
-// Byte Constants for Communication Protocol 
-const byte whiteByte = 0xCA;
-const byte blackByte = 0xCB;
+// states
+char color;
+
+// Tunable Parameters in program
+const RELAY_DELAY = 3000; // after hall is triggered, relay turns off track power for how long?
+const COLOR_THRESH = 150; // Light range, from 0-1024.
+const LEAVE_HALL_DELAY = 2000; // after marble dropped off, how long after hall 1 do we wait before setting tracks straight?
+
 
 void setup() {
   // Initialize both Hardware and Software Serial.
@@ -60,15 +55,11 @@ void setup() {
   }
 
   // Set up Hall Effect Sensors with Arduino Digital Pins.
-  pinMode(HALL1PIN, INPUT);
-  pinMode(HALL2PIN, INPUT);
-  pinMode(HALL3PIN, INPUT);
-  pinMode(HALL4PIN, INPUT);
-  pinMode(HALL5PIN, INPUT);
+  pinMode(HALL_PIN, INPUT);
 
   // Set Up Servo Motos with Arduino Digital Pins
-  pickupServo.attach(PICKUPSERVOPIN); 
-  dropoffServo.attach(DROPOFFSERVOPIN);
+  pickupServo.attach(PICKUPSERVOPIN, 1000, 2000); 
+  dropoffServo.attach(DROPOFFSERVOPIN, 1000, 2000);
 
   // Set up trickle pins
   pinMode(TRICKLE_ENTRANCE_DIR_PIN, OUTPUT);
@@ -76,18 +67,20 @@ void setup() {
   pinMode(TRICKLE_DROP2_DIR_PIN, OUTPUT);
   pinMode(TRICKLE_ENTRANCE_TRIG_PIN, OUTPUT);
   pinMode(TRICKLE_DROP_TRIG_PIN, OUTPUT);
+
+  // Set up relay trigger
+  pinMode(TRACK_RELAY_PIN, OUTPUT);
+
+  // Set all initial states
+  color = 'N'; // not found yet
+  handleEntranceRamp(true); // make entrance ramp tracks initially straight
 }
 
 void loop() {
-
-  // Update Color Sensor State
-  color = updateColor();
-
   // Read data from serial.read
   if(mySerial.available() > 0) {
     // Indicate we received something, then read it
     req = mySerial.read();
-
     res = handleACIA(req);
     mySerial.write(res);
     Serial.print("Req: ");
@@ -104,96 +97,120 @@ void loop() {
 // ------------------------------------------------------------
 
 byte handleACIA(byte data) {
-  byte returnData;
-  
   switch (data) {
-
     case 0x21:
-      returnData = handleEntranceRamp();
+      return waitAndCut();
       break;
     case 0x22:
-      returnData = trickleEntranceTrigger();
+      return pickupRoutine();
+      break;
     case 0x23:
-      returnData = waitHall1();
-      break;
-    case 0x87:
-      returnData = handleDropoffServo();
-      break;
-    case 0x89:
-      returnData = handleColorSensor();
+      return dropoffRoutine();
       break;
     default:
-      returnData = 0x00;
+      return 0x00;
+  }
+}
+
+// -----------------------------------------------
+//    Handle Color Sensing and track switching
+// -----------------------------------------------
+
+byte pickupRoutine() {
+  // Close the tracks
+  handleEntranceRamp(false);
+
+  // Move Servo to start position
+  pickupServo.write(0);
+  delay(1500);
+
+  // Move Servo to color detector
+  for (int i = 0; i <= 90; i++) {
+    pickupServo.write(i);
+    delay(10);
+  }
+  pickupServo.write(90);
+
+  // Detect Color, trigger the right track.
+  if (isBlackBall()) {
+    handleDropRamp(false);
+  } else {
+    handleDropRamp(true);
   }
 
-  return returnData;
-}
-
-byte handleColorSensor() {
-  return color;
-}
-
-byte handlePickupServo() {
-  pickupServo.write(0);
-  delay(250);
+  // Move Servo to drop
+  for (int i = 90; i <= 180; i++) {
+    pickupServo.write(i);
+    delay(10);
+  }
   pickupServo.write(180);
-  delay(250);
-  pickupServo.write(0);
-  delay(250);
-  pickupServo.write(180);
-  delay(250);
+
+  delay(1000); // experimental delay
+
+  return (color == 'B' ? 0xC0 : 0xCF);
+}
+
+byte dropoffRoutine() {
+  // NOTE: servo control thingies needed here.
+
+  // After a delay. make tracks straight.
+  waitHall();
+  delay(LEAVE_HALL_DELAY);
+  handleEntranceRamp(true);
 
   return 0x01;
 }
 
-byte handleDropoffServo() {
-  dropoffServo.write(0);
-  delay(250);
-  dropoffServo.write(180);
-  delay(250);
-  dropoffServo.write(0);
-  delay(250);
-  dropoffServo.write(180);
-  delay(250);
+// --------------------------------------------
+//            TRACK SWITCHING LOGIC
+//          Logic for trickle charges
+// --------------------------------------------
+
+byte handleEntranceRamp(bool isOpen) {
+  // set the directions
+  digitalWrite(TRICKLE_ENTRANCE_DIR_PIN, isOpen ? HIGH : LOW)
+  delay(25);
+
+  // trigger the trickle charge.
+  digitalWrite(TRICKLE_DROP_TRIG_PIN, LOW)
+  delay(25);
+  digitalWrite(TRICKLE_DROP_TRIG_PIN, HIGH)
 
   return 0x01;
 }
 
-byte openEntranceRamp() {
-  // Logic for trickle charges
-  Serial.println("Entrance Ramp Logic Not implemented yet.");
-  return 0x00;
-}
-
-byte closeEntranceRamp() {
-  // Logic for trickle charges
-  Serial.println("Entrance Ramp Logic Not implemented yet.");
-  return 0x00;
-}
-
-byte handleNorthDrop() {
-  // Logic for trickle charges
-  Serial.println("North Dropoff Logic Not implemented yet.");
-  return 0x00;
-}
-
-byte handleSouthDrop() {
-  // Logic for trickle charges
-  Serial.println("South Dropoff Logic Not implemented yet.");
-  return 0x00;
-}
-
-
-byte waitHall1() {
-  while (digitalRead(HALL1PIN) == HIGH); // kill time, wait for hall 1 to trigger
-  triggerRelay();
-  return 0x01;
-}
-
-byte triggerRelay() {
-  // NOTE: Not implemented. We want to turn off track power for a good 3-5 seconds.
+byte handleDropRamp(bool isNorth) {
+  // set the directions
+  digitalWrite(TRICKLE_DROP1_DIR_PIN, isNorth ? HIGH : LOW)
+  digitalWrite(TRICKLE_DROP2_DIR_PIN, isNorth ? LOW : HIGH)
+  delay(25);
   
-  return 0x00
+  // trigger the trickle charge.
+  digitalWrite(TRICKLE_DROP_TRIG_PIN, LOW)
+  delay(25);
+  digitalWrite(TRICKLE_DROP_TRIG_PIN, HIGH)
+
+  return 0x01;
+}
+
+// -------------------------------------------------
+// HANDLERS FOR HALL EFFECT AND TRACK RELAY:
+// -------------------------------------------------
+byte waitAndCut() {
+  waitHall();
+  cutTrackPower();
+  return 0x01;
+}
+
+// Stands by until a hall effect sensor goes low.
+void waitHall() {
+  while (digitalRead(HALL1PIN) == HIGH); // kill time, wait for hall 1 to trig
+}
+
+void cutTrackPower() {
+  digitalWrite(TRACK_RELAY_PIN, LOW);
+  delay(RELAY_DELAY);
+  digitalWrite(TRACK_RELAY_PIN, HIGH);
 }
 
 // ------------------------------------------------------------
@@ -203,33 +220,27 @@ byte triggerRelay() {
 // ------------------------------------------------------------
 
 // Updates currently held color in arduino variable
-byte updateColor() {
-  if (APDS.colorAvailable()) {
-    int r, g, b;
+bool sensorIsBlackBall() {
+  while (!APDS.colorAvailable());
+  
+  int r, g, b;
 
-    // read the color
-    APDS.readColor(r, g, b);
+  // read the color
+  APDS.readColor(r, g, b);
 
-    float grayscale = (0.2126*r + 0.7152*g + 0.0722*b);
+  float grayscale = (0.2126*r + 0.7152*g + 0.0722*b);
 
-    if (grayscale < 150) {
-      return blackByte;
-    } else {
-      return whiteByte;
-    }
+  return grayscale < COLOR_THRESH;
+}
+
+bool isBlackBall() {
+  if (color == 'N') {
+    color = sensorIsBlackBall() ? 'B' : 'W';
   }
+  return color == 'B';
 }
 
-// Updates all hall sensors
-void updateHalls() {
-  hall1 = (digitalRead(HALL1PIN) == HIGH) ? hallOn : hallOff;
-  hall2 = (digitalRead(HALL2PIN) == HIGH) ? hallOn : hallOff;
-  hall3 = (digitalRead(HALL3PIN) == HIGH) ? hallOn : hallOff;
-  hall4 = (digitalRead(HALL4PIN) == HIGH) ? hallOn : hallOff;
-  hall5 = (digitalRead(HALL5PIN) == HIGH) ? hallOn : hallOff;
+byte clearColorState() {
+  color = 'N';
+  return 0x01;
 }
-
-
-
-
-
