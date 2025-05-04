@@ -36,9 +36,9 @@ byte res;
 char color;
 
 // Tunable Parameters in program
-const RELAY_DELAY = 3000; // after hall is triggered, relay turns off track power for how long?
-const COLOR_THRESH = 150; // Light range, from 0-1024.
-const LEAVE_HALL_DELAY = 2000; // after marble dropped off, how long after hall 1 do we wait before setting tracks straight?
+const int RELAY_DELAY = 3000; // after hall is triggered, relay turns off track power for how long?
+const int COLOR_THRESH = 150; // Light range, from 0-1024.
+const int LEAVE_HALL_DELAY = 2000; // after marble dropped off, how long after hall 1 do we wait before setting tracks straight?
 
 
 void setup() {
@@ -196,27 +196,27 @@ byte dropoffRoutine() {
 
 byte handleEntranceRamp(bool isOpen) {
   // set the directions
-  digitalWrite(TRICKLE_ENTRANCE_DIR_PIN, isOpen ? HIGH : LOW)
+  digitalWrite(TRICKLE_ENTRANCE_DIR_PIN, isOpen ? HIGH : LOW);
   delay(25);
 
   // trigger the trickle charge.
-  digitalWrite(TRICKLE_DROP_TRIG_PIN, LOW)
+  digitalWrite(TRICKLE_DROP_TRIG_PIN, LOW);
   delay(25);
-  digitalWrite(TRICKLE_DROP_TRIG_PIN, HIGH)
+  digitalWrite(TRICKLE_DROP_TRIG_PIN, HIGH);
 
   return 0x01;
 }
 
 byte handleDropRamp(bool isNorth) {
   // set the directions
-  digitalWrite(TRICKLE_DROP1_DIR_PIN, isNorth ? HIGH : LOW)
-  digitalWrite(TRICKLE_DROP2_DIR_PIN, isNorth ? LOW : HIGH)
+  digitalWrite(TRICKLE_DROP1_DIR_PIN, isNorth ? HIGH : LOW);
+  digitalWrite(TRICKLE_DROP2_DIR_PIN, isNorth ? LOW : HIGH);
   delay(25);
   
   // trigger the trickle charge.
-  digitalWrite(TRICKLE_DROP_TRIG_PIN, LOW)
+  digitalWrite(TRICKLE_DROP_TRIG_PIN, LOW);
   delay(25);
-  digitalWrite(TRICKLE_DROP_TRIG_PIN, HIGH)
+  digitalWrite(TRICKLE_DROP_TRIG_PIN, HIGH);
 
   return 0x01;
 }
@@ -232,7 +232,7 @@ byte waitAndCut() {
 
 // Stands by until a hall effect sensor goes low.
 void waitHall() {
-  while (digitalRead(HALL1PIN) == HIGH); // kill time, wait for hall 1 to trig
+  while (digitalRead(HALL_PIN) == HIGH); // kill time, wait for hall 1 to trig
 }
 
 void cutTrackPower() {
