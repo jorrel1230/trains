@@ -19,12 +19,12 @@ const int HALL_PIN = 9;
 const int PICKUPSERVOPIN = 5;
 const int DROPOFFSERVOPIN = 6;
 
-const int TRICKLE_ENTRANCE_DIR_PIN = A0;
+const int TRICKLE_ENTRANCE_DIR_PIN = A2;
 const int TRICKLE_DROP1_DIR_PIN = A1;
-const int TRICKLE_DROP2_DIR_PIN = A2;
+const int TRICKLE_DROP2_DIR_PIN = A0;
 
-const int TRICKLE_ENTRANCE_TRIG_PIN = 7;
-const int TRICKLE_DROP_TRIG_PIN = 8;
+const int TRICKLE_ENTRANCE_TRIG_PIN = 8;
+const int TRICKLE_DROP_TRIG_PIN = 7;
 
 const int TRACK_RELAY_PIN = A3;
 
