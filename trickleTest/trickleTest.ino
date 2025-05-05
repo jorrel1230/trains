@@ -36,40 +36,15 @@ void setup() {
 }
 
 void loop() {
-  Serial.println("Testing...");
-
-
-  digitalWrite(TRICKLE_ENTRANCE_DIR_PIN, LOW);
-  digitalWrite(TRICKLE_DROP1_DIR_PIN, LOW);
-  digitalWrite(TRICKLE_DROP2_DIR_PIN, LOW);
-  delay(200);
-
-  digitalWrite(TRICKLE_ENTRANCE_TRIG_PIN, LOW);
-  digitalWrite(TRICKLE_DROP_TRIG_PIN, LOW);
-  delay(10);
-
-  digitalWrite(TRICKLE_ENTRANCE_TRIG_PIN, HIGH);
-  digitalWrite(TRICKLE_DROP_TRIG_PIN, HIGH);
-
-  delay(15000);
-
-
-
-
-  digitalWrite(TRICKLE_ENTRANCE_DIR_PIN, HIGH);
-  digitalWrite(TRICKLE_DROP1_DIR_PIN, HIGH);
-  digitalWrite(TRICKLE_DROP2_DIR_PIN, HIGH);
-  delay(200);
-
-  digitalWrite(TRICKLE_ENTRANCE_TRIG_PIN, LOW);
-  digitalWrite(TRICKLE_DROP_TRIG_PIN, LOW);
-  delay(10);
-
-  digitalWrite(TRICKLE_ENTRANCE_TRIG_PIN, HIGH);
-  digitalWrite(TRICKLE_DROP_TRIG_PIN, HIGH);
-
-  delay(15000);
-
+  handleEntranceRamp(true);
+  delay(7500);
+  handleDropRamp(true);
+  delay(7500);
+  
+  handleEntranceRamp(false);
+  delay(7500);
+  handleDropRamp(false);
+  delay(7500);
 }
 
 // --------------------------------------------
@@ -78,27 +53,31 @@ void loop() {
 // --------------------------------------------
 
 byte handleEntranceRamp(bool isOpen) {
+  digitalWrite(TRICKLE_ENTRANCE_TRIG_PIN, HIGH);
+
   // set the directions
   digitalWrite(TRICKLE_ENTRANCE_DIR_PIN, isOpen ? HIGH : LOW);
-  delay(100);
+  delay(200);
 
   // trigger the trickle charge.
-  digitalWrite(TRICKLE_DROP_TRIG_PIN, LOW);
-  delay(100);
-  digitalWrite(TRICKLE_DROP_TRIG_PIN, HIGH);
+  digitalWrite(TRICKLE_ENTRANCE_TRIG_PIN, LOW);
+  delay(10);
+  digitalWrite(TRICKLE_ENTRANCE_TRIG_PIN, HIGH);
 
   return 0x01;
 }
 
 byte handleDropRamp(bool isNorth) {
+  digitalWrite(TRICKLE_DROP_TRIG_PIN, HIGH);
+
   // set the directions
   digitalWrite(TRICKLE_DROP1_DIR_PIN, isNorth ? HIGH : LOW);
   digitalWrite(TRICKLE_DROP2_DIR_PIN, isNorth ? LOW : HIGH);
-  delay(100);
+  delay(200);
   
   // trigger the trickle charge.
   digitalWrite(TRICKLE_DROP_TRIG_PIN, LOW);
-  delay(100);
+  delay(10);
   digitalWrite(TRICKLE_DROP_TRIG_PIN, HIGH);
 
   return 0x01;
