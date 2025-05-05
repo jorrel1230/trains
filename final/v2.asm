@@ -61,6 +61,7 @@ YLTOGN EQU $3C0		; Toggle for which light to turn from yellow to green
 CMDIC		EQU $3CA		; Stores the command we wish to run. EX: 01, 02, or 03.
 ENGNUM		EQU $3CB		; Stores our engine number. this is set in initialization.
 ARDUSEND	EQU $3CC		; put data in here before sending stuff to arduino
+ARDUREC		EQU $3CA		; return data
 
 
 ;       Versatile Interace Adapter  (VIA)  Addresses
@@ -115,23 +116,42 @@ DISP	EQU $4000
 	; Set our engine number
 	LDA #$12
 	STA ENGNUM
+	
+	STA DISP
 
 	; Set Display to 00 to acknowledge that all initialization went smoothly
 	LDA #$00 ; PUT 00 ON THE DISPLAY
 	STA DISP	
-
-WAITFORSTART
-	LDA NTRAIN
-	BEQ WAITFORSTART
+	
+ARENA
+	LDA RDATA
+	STA DISP
+	CMP #$85
+	BEQ OUTSIDE
+	JMP ARENA
 
 OUTSIDE
+	; debug
+	LDA #$11
+	STA DISP
+	
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
+
 	; Set Speed High
-	LDA #$03
-	STA CMDIC
-	JSR SENDIC
+	;LDA #$03
+	;STA CMDIC
+	;JSR SENDIC
 
 	; Loop on NTRAIN. If it is the correct engine, then transition 
 	; to STARTSEQ. else, transition to SKIPSEQ.
+	JMP STARTSEQ
 
 CHECKNTRAIN
 	LDA NTRAIN
@@ -145,22 +165,64 @@ CHECKNTRAIN
 	JMP SKIPSEQ
 
 SKIPSEQ
+	; debug
+	LDA #$22
+	STA DISP
+
 	; NOTE: SET UPPER TRACKS STRAIGHT.
+	LDA #$24
+	STA ARDUSEND
+	JSR ACIATX
 	
 	JMP OUTSIDE
 
 STARTSEQ
+	; debug
+	LDA #$33
+	STA DISP
+	
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
+
 	; NOTE: wait until HALL 1: LOW. then, transition to SLOW PICKUP
+	LDA #$00
+	STA ARDUREC
+	
+	LDA #$21
+	STA ARDUSEND
+	JSR ACIATX
+
+WAITING
+	LDA ARDUREC
+	STA DISP
+	BEQ WAITING
 
 	JMP SLOWPICKUP
 
 SLOWPICKUP
+	; debug
+	LDA #$44
+	STA DISP
+
 	; SET SPEED TO SLOW.
-	LDA #$02
-	STA CMDIC
-	JSR SENDIC
+	;LDA #$02
+	;STA CMDIC
+	;JSR SENDIC
+	
+	; immediately after, cut track power for a couple seconds
+	LDA #$25
+	STA ARDUSEND
+	JSR ACIATX
 
 	; NOTE: wait until HALL 2: LOW. then, transition to STOP PICKUP
+	LDA #$21
+	STA ARDUSEND
+	JSR ACIATX
+	
 	JMP STOPPICKUP
 
 STOPPICKUP
@@ -168,12 +230,19 @@ STOPPICKUP
 	LDA #$01
 	STA CMDIC
 	JSR SENDIC
+	
+	; immediately after, cut track power for a couple seconds
+	LDA #$25
+	STA ARDUSEND
+	JSR ACIATX 
 
-	; NOTE: trigger the color routine
-	; NOTE: SET UPPER TRACKS CURVED IN.
-	; NOTE: SET LOWER TRACKS TO CORRESPONDING COLOR.
-
-	JSR DELAY ; NOTE: prolly want to delay here, can be removed
+	; NOTE: trigger the pickup routine
+	LDA #$22
+	STA ARDUSEND
+	JSR ACIATX 
+	
+	LDA ARDUREC
+	STA DISP
 
 	JMP FASTDROPOFF
 
@@ -184,6 +253,10 @@ FASTDROPOFF
 	JSR SENDIC
 
 	; NOTE: wait until HALL 3: LOW. then, transition to SLOW DROPOFF
+	LDA #$21
+	STA ARDUSEND
+	JSR ACIATX
+	
 	JMP SLOWDROPOFF
 
 SLOWDROPOFF
@@ -191,18 +264,35 @@ SLOWDROPOFF
 	LDA #$02
 	STA CMDIC
 	JSR SENDIC
+	
+	; immediately after, cut track power for a couple seconds
+	LDA #$25
+	STA ARDUSEND
+	JSR ACIATX 
  
 	; NOTE: Check if HALL 4 OR 5: LOW. then, transition to STOP DROPOFF
+	LDA #$21
+	STA ARDUSEND
+	JSR ACIATX
+	
 	JMP STOPDROPOFF
 
 STOPDROPOFF
-		; STOP TRAIN.
+	; STOP TRAIN.
 	LDA #$01
 	STA CMDIC
 	JSR SENDIC
+	
+	; immediately after, cut track power for a couple seconds
+	LDA #$25
+	STA ARDUSEND
+	JSR ACIATX 
 
 	; NOTE: trigger DROPOFF ROUTINE.
-	; NOTE: Check if HALL 2: LOW. then, UPPER TRACKS STRAIGHT. then, transition to OUTSIDE
+	LDA #$25
+	STA ARDUSEND
+	JSR ACIATX 
+	
 	JMP OUTSIDE
 
 
@@ -227,7 +317,7 @@ ACIARX
 	BEQ ACIARX	; If not, then wait...
 
 	LDA ACIA ; Read the buffer
-	STA DISP ; Display the code obtained
+	STA ARDUREC ; store the code obtained
 	
 	RTS	
 
@@ -237,14 +327,6 @@ DELAY
 	INY
 	BNE DELAY
 	RTS
-
-; Reset RDATA and ACIA then go back to ARENA
-RESETRD 
-	LDA #$00
-	STA RDATA
-	STA DISP
-	JSR INITACIA
-	JMP ARENA
 		
 ; (Re-)Initialize the ACIA
 INITACIA

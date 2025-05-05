@@ -44,7 +44,7 @@ const float pickupServoStart = 4.9;
 const float pickupServoStop = 172.5;
 const float pickupServoMid = (pickupServoStart + pickupServoStop) / 2;
 
-const float dropoffServoStart = 4.9;
+const float dropoffServoStart = 90;
 const float dropoffServoStop = 172.5;
 
 const bool isTesting = true;
@@ -83,12 +83,12 @@ void setup() {
 
   // Set all initial states
   color = 'N'; // not found yet
-  delay(15000); // let trickles charge up
   handleEntranceRamp(true); // make entrance ramp tracks initially straight
 
   // make sure trickles are not triggering
   digitalWrite(TRICKLE_ENTRANCE_TRIG_PIN, HIGH);
   digitalWrite(TRICKLE_DROP_TRIG_PIN, HIGH);
+  digitalWrite(TRACK_RELAY_PIN, HIGH);
 
   pickupServo.write(pickupServoStart);
   dropoffServo.write(dropoffServoStart);
@@ -97,9 +97,9 @@ void setup() {
 
 void loop() {
   // Read data from serial.read
-  if(Serial.available() > 0) {
+  if(mySerial.available() > 0) {
     // Indicate we received something, then read it
-    req = Serial.read();
+    req = mySerial.read();
     res = handleACIA(req);
     mySerial.write(res);
     Serial.print("Req: ");
@@ -118,8 +118,8 @@ void loop() {
 byte handleACIA(byte data) {
   switch (data) {
     case 0x21:
-    Serial.println("Wait and cut called.");
-      return waitAndCut();
+    Serial.println("Waiting for hall..");
+      return waitHall();
       break;
     case 0x22:
       Serial.println("Pickup Routine Called!");
@@ -128,6 +128,15 @@ byte handleACIA(byte data) {
     case 0x23:
       Serial.println("Dropoff Routine Called!");
       return dropoffRoutine();
+      break;
+    case 0x24:
+      Serial.println("Setting outer tracks straight.");
+      handleEntranceRamp(true);
+      return 0x01;
+      break;
+    case 0x25:
+    Serial.println("cutting track power.");
+      return cutTrackPower();
       break;
     default:
       return 0x00;
@@ -271,15 +280,17 @@ byte waitAndCut() {
 }
 
 // Stands by until a hall effect sensor goes low.
-void waitHall() {
+byte waitHall() {
   while (digitalRead(HALL_PIN) == HIGH); // kill time, wait for hall 1 to trig
   Serial.println("magnet detected!");
+  return 0x01;
 }
 
-void cutTrackPower() {
+byte cutTrackPower() {
   digitalWrite(TRACK_RELAY_PIN, LOW);
   delay(RELAY_DELAY);
   digitalWrite(TRACK_RELAY_PIN, HIGH);
+  return 0x01;
 }
 
 // ------------------------------------------------------------
