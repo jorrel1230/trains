@@ -61,7 +61,7 @@ YLTOGN EQU $3C0		; Toggle for which light to turn from yellow to green
 CMDIC		EQU $3CA		; Stores the command we wish to run. EX: 01, 02, or 03.
 ENGNUM		EQU $3CB		; Stores our engine number. this is set in initialization.
 ARDUSEND	EQU $3CC		; put data in here before sending stuff to arduino
-ARDUREC		EQU $3CA		; return data
+ARDUREC		EQU $3CA		; return data from the arduino
 
 
 ;       Versatile Interace Adapter  (VIA)  Addresses
@@ -122,7 +122,8 @@ DISP	EQU $4000
 	; Set Display to 00 to acknowledge that all initialization went smoothly
 	LDA #$00 ; PUT 00 ON THE DISPLAY
 	STA DISP	
-	
+
+; Temporary Start condition
 ARENA
 	LDA RDATA
 	STA DISP
@@ -151,34 +152,28 @@ OUTSIDE
 
 	; Loop on NTRAIN. If it is the correct engine, then transition 
 	; to STARTSEQ. else, transition to SKIPSEQ.
-	JMP STARTSEQ
+;CHECKNTRAIN
+;	LDA NTRAIN
+;	BEQ CHECKNTRAIN
+;
+;	; once we have ntrain, compare.
+;	CMP ENGNUM	; NOTE: can i compare directly to mem location???
+;
+;	; If comparison successful, start sequence. otherwise just skip
+;	BEQ STARTSEQ
+;	JMP SKIPSEQ
 
-CHECKNTRAIN
-	LDA NTRAIN
-	BEQ CHECKNTRAIN
-
-	; once we have ntrain, compare.
-	CMP ENGNUM	; NOTE: can i compare directly to mem location???
-
-	; If comparison successful, start sequence. otherwise just skip
-	BEQ STARTSEQ
-	JMP SKIPSEQ
-
-SKIPSEQ
-	; debug
-	LDA #$22
-	STA DISP
-
-	; NOTE: SET UPPER TRACKS STRAIGHT.
-	LDA #$24
-	STA ARDUSEND
-	JSR ACIATX
-	
-	JMP OUTSIDE
+;SKIPSEQ
+;	; NOTE: SET UPPER TRACKS STRAIGHT.
+;	LDA #$24
+;	STA ARDUSEND
+;	JSR ACIATX
+;	
+;	JMP OUTSIDE
 
 STARTSEQ
 	; debug
-	LDA #$33
+	LDA #$22
 	STA DISP
 	
 	JSR DELAY
@@ -189,23 +184,13 @@ STARTSEQ
 	JSR DELAY
 
 	; NOTE: wait until HALL 1: LOW. then, transition to SLOW PICKUP
-	LDA #$00
-	STA ARDUREC
-	
 	LDA #$21
 	STA ARDUSEND
-	JSR ACIATX
-
-WAITING
-	LDA ARDUREC
-	STA DISP
-	BEQ WAITING
-
-	JMP SLOWPICKUP
+	JSR CALLARDUINO
 
 SLOWPICKUP
 	; debug
-	LDA #$44
+	LDA #$33
 	STA DISP
 
 	; SET SPEED TO SLOW.
@@ -221,25 +206,25 @@ SLOWPICKUP
 	; NOTE: wait until HALL 2: LOW. then, transition to STOP PICKUP
 	LDA #$21
 	STA ARDUSEND
-	JSR ACIATX
+	JSR CALLARDUINO
 	
 	JMP STOPPICKUP
 
 STOPPICKUP
 	; STOP TRAIN.
-	LDA #$01
-	STA CMDIC
-	JSR SENDIC
+	;LDA #$01
+	;STA CMDIC
+	;JSR SENDIC
 	
 	; immediately after, cut track power for a couple seconds
 	LDA #$25
 	STA ARDUSEND
-	JSR ACIATX 
+	JSR CALLARDUINO
 
 	; NOTE: trigger the pickup routine
 	LDA #$22
 	STA ARDUSEND
-	JSR ACIATX 
+	JSR CALLARDUINO
 	
 	LDA ARDUREC
 	STA DISP
@@ -248,66 +233,68 @@ STOPPICKUP
 
 FASTDROPOFF
 	; set speed FAST
-	LDA #$03
-	STA CMDIC
-	JSR SENDIC
+	;LDA #$03
+	;STA CMDIC
+	;JSR SENDIC
 
 	; NOTE: wait until HALL 3: LOW. then, transition to SLOW DROPOFF
 	LDA #$21
 	STA ARDUSEND
-	JSR ACIATX
+	JSR CALLARDUINO
 	
 	JMP SLOWDROPOFF
 
 SLOWDROPOFF
 	; SET SPEED TO SLOW.
-	LDA #$02
-	STA CMDIC
-	JSR SENDIC
+	;LDA #$02
+	;STA CMDIC
+	;JSR SENDIC
 	
 	; immediately after, cut track power for a couple seconds
 	LDA #$25
 	STA ARDUSEND
-	JSR ACIATX 
+	JSR CALLARDUINO
  
 	; NOTE: Check if HALL 4 OR 5: LOW. then, transition to STOP DROPOFF
 	LDA #$21
 	STA ARDUSEND
-	JSR ACIATX
+	JSR CALLARDUINO
 	
 	JMP STOPDROPOFF
 
 STOPDROPOFF
 	; STOP TRAIN.
-	LDA #$01
-	STA CMDIC
-	JSR SENDIC
+	;LDA #$01
+	;STA CMDIC
+	;JSR SENDIC
 	
 	; immediately after, cut track power for a couple seconds
 	LDA #$25
 	STA ARDUSEND
-	JSR ACIATX 
+	JSR CALLARDUINO
 
 	; NOTE: trigger DROPOFF ROUTINE.
-	LDA #$25
+	LDA #$23
 	STA ARDUSEND
-	JSR ACIATX 
+	JSR CALLARDUINO 
 	
 	JMP OUTSIDE
 
 
 
 
-
-
+CALLARDUINO
+	; Reset the recieve information buffer
+	LDA #$00
+	STA ARDUREC
 
 ACIATX	
 	LDA ACIASR ; Load the status register
 	AND #$10 ; Is the ACIA TX line clear?
 	BEQ ACIATX; If it is not, then wait...
 
-	LDA ARDUSEND ; Accumulator has been overwritten already; make sure we reload RDATA
-	STA ACIA ; Send RDATA to the ACIA TX 
+	LDA ARDUSEND ; load send data
+	STA ACIA ; Send data to the ACIA TX 
 
 ; We now start to load the ACIA with some data...
 ACIARX	
@@ -318,8 +305,11 @@ ACIARX
 
 	LDA ACIA ; Read the buffer
 	STA ARDUREC ; store the code obtained
-	
-	RTS	
+
+	; Maybe??
+	BEQ ACIARX
+
+	RTS
 
 DELAY
 	INX
