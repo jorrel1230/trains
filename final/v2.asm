@@ -186,7 +186,9 @@ SLOWPICKUP
 	;LDA #$02
 	;STA CMDIC
 	;JSR SENDIC
-	
+
+	JSR LONGDELAY
+
 	; resume track power with new speed in place
 	LDA #$27
 	STA ARDUSEND
@@ -217,8 +219,6 @@ STOPPICKUP
 	STA ARDUSEND
 	JSR ACIATX
 	
-	
-
 	JMP FASTDROPOFF
 
 FASTDROPOFF
@@ -246,14 +246,15 @@ SLOWDROPOFF
 	;LDA #$02
 	;STA CMDIC
 	;JSR SENDIC
+
+	JSR LONGDELAY
 	
 	; resume track power with new speed in place
 	LDA #$27
 	STA ARDUSEND
 	JSR ACIATX
 	
-	JSR LONGDELAY
-
+	JSR DELAY ; suspicious delay
  
 	; NOTE: Check if HALL 4 OR 5: LOW. then, transition to STOP DROPOFF
 	LDA #$25
@@ -286,8 +287,6 @@ STOPDROPOFF
 STOPEVERYTHING
 	JMP STOPEVERYTHING
 	
-
-
 
 
 CALLARDUINO
