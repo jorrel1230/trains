@@ -117,8 +117,19 @@ DISP	EQU $4000
 	LDA #$12
 	STA ENGNUM
 	
+	LDA #$99
 	STA DISP
-
+	
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
+	
+	; Initialize the arduino
+	LDA #$20
+	STA ARDUSEND
+	JSR CALLARDUINO
+	
 	; Set Display to 00 to acknowledge that all initialization went smoothly
 	LDA #$00 ; PUT 00 ON THE DISPLAY
 	STA DISP	
@@ -132,19 +143,6 @@ ARENA
 	JMP ARENA
 
 OUTSIDE
-	; debug
-	LDA #$11
-	STA DISP
-	
-	JSR DELAY
-	JSR DELAY
-	JSR DELAY
-	JSR DELAY
-	JSR DELAY
-	JSR DELAY
-	JSR DELAY
-	JSR DELAY
-
 	; Set Speed High
 	;LDA #$03
 	;STA CMDIC
@@ -172,62 +170,54 @@ OUTSIDE
 ;	JMP OUTSIDE
 
 STARTSEQ
-	; debug
-	LDA #$22
-	STA DISP
-	
-	JSR DELAY
-	JSR DELAY
-	JSR DELAY
-	JSR DELAY
-	JSR DELAY
-	JSR DELAY
-
 	; NOTE: wait until HALL 1: LOW. then, transition to SLOW PICKUP
 	LDA #$21
 	STA ARDUSEND
 	JSR CALLARDUINO
 
 SLOWPICKUP
-	; debug
-	LDA #$33
-	STA DISP
+	
+	; immediately after, cut track power
+	LDA #$26
+	STA ARDUSEND
+	JSR ACIATX
 
 	; SET SPEED TO SLOW.
 	;LDA #$02
 	;STA CMDIC
 	;JSR SENDIC
 	
-	; immediately after, cut track power for a couple seconds
-	LDA #$25
+	; resume track power with new speed in place
+	LDA #$27
 	STA ARDUSEND
 	JSR ACIATX
+	
+	JSR DELAY
 
 	; NOTE: wait until HALL 2: LOW. then, transition to STOP PICKUP
-	LDA #$21
+	LDA #$25
 	STA ARDUSEND
 	JSR CALLARDUINO
 	
 	JMP STOPPICKUP
 
 STOPPICKUP
-	; STOP TRAIN.
-	;LDA #$01
-	;STA CMDIC
-	;JSR SENDIC
-	
-	; immediately after, cut track power for a couple seconds
-	LDA #$25
-	STA ARDUSEND
-	JSR CALLARDUINO
 
 	; NOTE: trigger the pickup routine
 	LDA #$22
 	STA ARDUSEND
 	JSR CALLARDUINO
 	
+	; display result to TILs
 	LDA ARDUREC
 	STA DISP
+	
+	; resume track power with marble in place
+	LDA #$27
+	STA ARDUSEND
+	JSR ACIATX
+	
+	
 
 	JMP FASTDROPOFF
 
@@ -236,6 +226,8 @@ FASTDROPOFF
 	;LDA #$03
 	;STA CMDIC
 	;JSR SENDIC
+	
+	JSR LONGDELAY
 
 	; NOTE: wait until HALL 3: LOW. then, transition to SLOW DROPOFF
 	LDA #$21
@@ -245,40 +237,55 @@ FASTDROPOFF
 	JMP SLOWDROPOFF
 
 SLOWDROPOFF
+	; immediately after, cut track power
+	LDA #$26
+	STA ARDUSEND
+	JSR ACIATX
+
 	; SET SPEED TO SLOW.
 	;LDA #$02
 	;STA CMDIC
 	;JSR SENDIC
 	
-	; immediately after, cut track power for a couple seconds
-	LDA #$25
+	; resume track power with new speed in place
+	LDA #$27
 	STA ARDUSEND
-	JSR CALLARDUINO
+	JSR ACIATX
+	
+	JSR LONGDELAY
+
  
 	; NOTE: Check if HALL 4 OR 5: LOW. then, transition to STOP DROPOFF
-	LDA #$21
+	LDA #$25
 	STA ARDUSEND
 	JSR CALLARDUINO
 	
 	JMP STOPDROPOFF
 
 STOPDROPOFF
-	; STOP TRAIN.
-	;LDA #$01
-	;STA CMDIC
-	;JSR SENDIC
-	
-	; immediately after, cut track power for a couple seconds
-	LDA #$25
-	STA ARDUSEND
-	JSR CALLARDUINO
 
 	; NOTE: trigger DROPOFF ROUTINE.
 	LDA #$23
 	STA ARDUSEND
 	JSR CALLARDUINO 
 	
-	JMP OUTSIDE
+	; look at dropoff return data. if its > marble limit, stop sorting marbles. else, keep going.
+	BEQ STOPEVERYTHING
+	
+	STA DISP
+	
+	; resume track power with marble in contanier now. wait some time before transition such that we can leave the halls
+	LDA #$27
+	STA ARDUSEND
+	JSR ACIATX
+	
+	JSR LONGDELAY
+	
+	JMP STARTSEQ
+	
+STOPEVERYTHING
+	JMP STOPEVERYTHING
+	
 
 
 
@@ -316,6 +323,14 @@ DELAY
 	BNE DELAY
 	INY
 	BNE DELAY
+	RTS
+	
+	
+LONGDELAY
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
+	JSR DELAY
 	RTS
 		
 ; (Re-)Initialize the ACIA
