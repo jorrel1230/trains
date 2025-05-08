@@ -56,12 +56,12 @@ byte handleEntranceRamp(bool isOpen) {
   digitalWrite(TRICKLE_ENTRANCE_TRIG_PIN, HIGH);
 
   // set the directions
-  digitalWrite(TRICKLE_ENTRANCE_DIR_PIN, isOpen ? HIGH : LOW);
+  digitalWrite(TRICKLE_ENTRANCE_DIR_PIN, isOpen ? LOW : HIGH);
   delay(200);
 
   // trigger the trickle charge.
   digitalWrite(TRICKLE_ENTRANCE_TRIG_PIN, LOW);
-  delay(10);
+  delay(100);
   digitalWrite(TRICKLE_ENTRANCE_TRIG_PIN, HIGH);
 
   return 0x01;
@@ -77,7 +77,7 @@ byte handleDropRamp(bool isNorth) {
   
   // trigger the trickle charge.
   digitalWrite(TRICKLE_DROP_TRIG_PIN, LOW);
-  delay(10);
+  delay(100);
   digitalWrite(TRICKLE_DROP_TRIG_PIN, HIGH);
 
   return 0x01;

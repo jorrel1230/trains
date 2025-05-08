@@ -151,12 +151,12 @@ DISP	EQU $4000
 ; to STARTSEQ. else, transition to SKIPSEQ.
 
 	LDA #$00
-	STA NTRAIN
+	STA RDATA
 
-CHECKNTRAIN
-	LDA NTRAIN
+CHECKRDATA
+	LDA RDATA
 	STA DISP
-	BEQ CHECKNTRAIN
+	BEQ CHECKRDATA
 
 STARTSEQ
 	; NOTE: wait until HALL 1: LOW. then, transition to SLOW PICKUP
@@ -172,9 +172,10 @@ SLOWPICKUP
 	JSR CALLARDUINO
 
 	; SET SPEED TO SLOW.
-	LDA #$01
-	STA CMDIC
-	JSR SENDIC
+	;LDA #$01
+	;STA CMDIC
+	;JSR SENDIC
+	JSR LONGDELAY
 
 	; resume track power with new speed in place
 	LDA #$27
@@ -205,9 +206,11 @@ STOPPICKUP
 
 FASTDROPOFF
 	; set speed FAST
-	LDA #$02
-	STA CMDIC
-	JSR SENDIC
+	;LDA #$02
+	;STA CMDIC
+	;JSR SENDIC
+	JSR LONGDELAY
+	
 	
 	; resume track power with marble in place
 	LDA #$27
@@ -232,9 +235,10 @@ SLOWDROPOFF
 	JSR CALLARDUINO
 
 	; SET SPEED TO SLOW.
-	LDA #$01
-	STA CMDIC
-	JSR SENDIC
+	;LDA #$01
+	;STA CMDIC
+	;JSR SENDIC
+	JSR LONGDELAY
 	
 	; resume track power with new speed in place
 	LDA #$27
@@ -269,16 +273,17 @@ STOPDROPOFF
 	
 CONTINUESTATE
 	; set speed FAST
-	LDA #$02
-	STA CMDIC
-	JSR SENDIC
+	;LDA #$02
+	;STA CMDIC
+	;JSR SENDIC
+	JSR LONGDELAY
 	
 	; resume track power with marble in contanier now. wait some time before transition such that we can leave the halls
 	LDA #$27
 	STA ARDUSEND
 	JSR CALLARDUINO
 	
-	JSR DELAY
+	JSR LONGDELAY
 	
 	JMP STARTSEQ
 
@@ -287,16 +292,18 @@ EXITSTATE
 	STA DISP
 
 	; set speed FAST
-	LDA #$02
-	STA CMDIC
-	JSR SENDIC
+	;LDA #$02
+	;STA CMDIC
+	;JSR SENDIC
+	JSR LONGDELAY
+	
 	
 	; resume track power with marble in contanier now. wait some time before transition such that we can leave the halls
 	LDA #$27
 	STA ARDUSEND
 	JSR CALLARDUINO
 	
-	JSR DELAY
+	JSR LONGDELAY
 	
 	; NOTE: wait until HALL 1: LOW. then, transition to SLOW PICKUP
 	LDA #$21
@@ -309,9 +316,10 @@ EXITSTATE
 	JSR CALLARDUINO
 
 	; SET SPEED TO SUPERFAST.
-	LDA #$03
-	STA CMDIC
-	JSR SENDIC
+	;LDA #$03
+	;STA CMDIC
+	;JSR SENDIC
+	JSR LONGDELAY
 	
 	; tracks OUTSIDE
 	LDA #$24

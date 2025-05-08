@@ -41,19 +41,23 @@ char color;
 // Tunable Parameters in program
 const int RELAY_DELAY = 3000; // after hall is triggered, relay turns off track power for how long?
 const int INTERMAGNET_RELAY_DELAY = 350; 
-const int RAPID_RELAY_DELAY = 0; 
+const int RAPID_RELAY_DELAY = 100; 
 
-const int COLOR_THRESH = 20; // Light range, from 0-1024.
+const int COLOR_THRESH = 15; // Light range, from 0-1024.
 const int LEAVE_HALL_DELAY = 2000; // after marble dropped off, how long after hall 1 do we wait before setting tracks straight?
 
 const float pickupServoStart = 14.5;
 const float pickupServoStop = 177;
 const float pickupServoMid = 95;
 
+
 const float dropoffServoStart = 90;
-const float dropoffServoStop = 175;
+const float dropoffServoBlackStop = 175;
+const float dropoffServoWhiteStop = 5;
 
 const bool isTesting = true;
+
+const int NUM_MARBLES = 5;
 
 void setup() {
   // Initialize both Hardware and Software Serial.
@@ -128,6 +132,7 @@ byte handleACIA(byte data) {
       break;
     case 0x24:
       Serial.println("Setting outer tracks straight.");
+      delay(3000);
       handleEntranceRamp(true);
       return 0x01;
       break;
@@ -245,30 +250,49 @@ byte pickupRoutine() {
 }
 
 byte dropoffRoutine() {
-  // servo control thingies needed here.
-  for (int i = dropoffServoStart; i <= dropoffServoStop; i += (dropoffServoStop - dropoffServoStart) / 8) {
-    dropoffServo.write(i);
-    delay(500);
-  }
 
-  for (int i = 0; i < 10; i++) {
-    dropoffServo.write(dropoffServoStop-5);
-    delay(15);
-    dropoffServo.write(dropoffServoStop+5);
-    delay(15);
-  }
-
-  for (int i = dropoffServoStop; i >= dropoffServoStart; i--) {
-    dropoffServo.write(i);
-    delay(10);
+  if (isBlackBall()) {
+    // servo control thingies needed here.
+    for (int i = dropoffServoStart; i <= dropoffServoBlackStop; i += (dropoffServoBlackStop - dropoffServoStart) / 8) {
+      dropoffServo.write(i);
+      delay(500);
+    }
+    for (int i = 0; i < 10; i++) {
+      dropoffServo.write(dropoffServoBlackStop-5);
+      delay(15);
+      dropoffServo.write(dropoffServoBlackStop+5);
+      delay(15);
+    }
+    for (int i = dropoffServoBlackStop; i >= dropoffServoStart; i--) {
+      dropoffServo.write(i);
+      delay(10);
+    }
+  } else {
+    // servo control thingies needed here.
+    for (int i = dropoffServoStart; i >= dropoffServoWhiteStop; i -= (dropoffServoStart - dropoffServoWhiteStop) / 8) {
+      dropoffServo.write(i);
+      delay(500);
+    }
+    for (int i = 0; i < 10; i++) {
+      dropoffServo.write(dropoffServoWhiteStop+5);
+      delay(15);
+      dropoffServo.write(dropoffServoWhiteStop-5);
+      delay(15);
+    }
+    for (int i = dropoffServoWhiteStop; i <= dropoffServoStart; i++) {
+      dropoffServo.write(i);
+      delay(10);
+    }
   }
 
   droppedCount += 1;
   clearColorState(); 
 
   // dropped count greater than 1 at this point for sure.
-  if (droppedCount < 10) return byte(droppedCount);
-  else return 0x00;
+  if (droppedCount < NUM_MARBLES) {
+    return byte(droppedCount);
+  }
+  return 0xEE;
 }
 
 // --------------------------------------------
